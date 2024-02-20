@@ -1,0 +1,84 @@
+USE SAKILA;
+
+SELECT
+  COUNT(*) AS total_tables
+FROM
+  information_schema.tables
+WHERE
+  table_schema = 'sakila';
+
+SELECT
+  table_name
+FROM
+  information_schema.tables
+WHERE
+  table_schema = 'sakila';
+  
+SELECT * FROM CUSTOMER;
+
+-- Scoprite quanti clienti si sono registrati nel 2006.
+
+SELECT COUNT(*) AS NumeroClientiRegistrati
+FROM CUSTOMER C
+WHERE YEAR(C.CREATE_DATE) = 2006;
+
+-- Trovate il numero totale di noleggi effettuati il giorno 1/1/2006.
+
+SELECT * FROM RENTAL;
+
+SELECT COUNT(*) AS 'NUMERO NOLEGGI'
+FROM RENTAL R
+WHERE R.RENTAL_DATE = '2006-01-01';
+
+-- Elencate tutti i film noleggiati nell’ultima settimana e tutte le informazioni legate al cliente che li ha noleggiati.
+
+SELECT MAX(RENTAL.RENTAL_DATE) FROM RENTAL;
+
+SELECT R.RENTAL_ID, F.TITLE AS TITOLO, C.*
+FROM RENTAL R
+JOIN CUSTOMER C ON R.CUSTOMER_ID = C.CUSTOMER_ID
+JOIN INVENTORY I ON I.STORE_ID = C.STORE_ID
+JOIN FILM F ON I.FILM_ID = F.FILM_ID
+WHERE R.RENTAL_DATE > (
+    SELECT SUBDATE(MAX(RENTAL_DATE), INTERVAL 1 WEEK) 
+    FROM RENTAL
+)
+ORDER BY R.RENTAL_DATE DESC;
+
+-- Calcolate la durata media del noleggio per ogni categoria di film.
+
+SELECT * FROM RENTAL;
+
+SELECT C.NAME AS CATEGORIA, ROUND(AVG(TIMESTAMPDIFF(HOUR, R.RENTAL_DATE, R.RETURN_DATE)), 0) AS 'MEDIA DURATA NOLEGGIO IN ORE'
+FROM RENTAL R
+JOIN INVENTORY I ON R.INVENTORY_ID = I.INVENTORY_ID
+JOIN FILM F ON I.FILM_ID = F.FILM_ID
+JOIN FILM_CATEGORY FC ON F.FILM_ID = FC.FILM_ID
+JOIN CATEGORY C ON C.CATEGORY_ID = FC.CATEGORY_ID
+WHERE R.RETURN_DATE IS NOT NULL
+GROUP BY CATEGORIA;
+
+-- Trovate la durata del noleggio più lungo
+
+SELECT C.NAME AS CATEGORIA, F.TITLE AS TITOLO, MAX(TIMESTAMPDIFF(DAY,R.RENTAL_DATE, R.RETURN_DATE)) AS 'PIU GIORNI DI NOLEGGIO'
+FROM RENTAL R
+JOIN INVENTORY I ON R.INVENTORY_ID = I.INVENTORY_ID
+JOIN FILM F ON I.FILM_ID = F.FILM_ID
+JOIN FILM_CATEGORY FC ON F.FILM_ID = FC.FILM_ID
+JOIN CATEGORY C ON C.CATEGORY_ID = FC.CATEGORY_ID
+WHERE R.RETURN_DATE IS NOT NULL
+GROUP BY CATEGORIA, TITOLO
+ORDER BY 'PIU GIORNI DI NOLEGGIO' DESC
+LIMIT 1;
+
+SELECT 
+    c.name AS category, 
+    SEC_TO_TIME(AVG(DATEDIFF(r.return_date, r.rental_date)) * 86400) AS avg_rental_duration
+FROM 
+    category c
+    JOIN film_category fc USING(category_id)
+    JOIN film f USING(film_id)
+    JOIN inventory i USING(film_id)
+    JOIN rental r USING(inventory_id)
+GROUP BY 
+    c.name;
